@@ -56,8 +56,7 @@ fb-terransible/
 │       ├── s3_account_apply.yml
 │       ├── s3_account_destroy.yml
 │       ├── bucket_apply.yml
-│       ├── bucket_destroy.yml
-│       └── fb_import.yml          # Gathers existing FB state for import
+│       └── bucket_destroy.yml
 │
 ├── modules/
 │   ├── fb_s3_account/               # Terraform module — S3 object store account
