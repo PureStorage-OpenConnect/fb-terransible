@@ -16,7 +16,7 @@
         name: "{{ bucket_name }}"
         account: "{{ account_name }}"
         state: present
-        versioning: "{{ versioning }}"
+        versioning: "{{ versioning if versioning in ['enabled', 'suspended'] else omit }}"
         quota: "{{ quota | default(omit) }}"
         hard_limit: "{{ hard_limit | default(omit) }}"
         fb_url: "{{ fb_url }}"
