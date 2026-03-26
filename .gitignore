@@ -1,0 +1,23 @@
+# Python virtual environment (recreate locally — see README Setup section)
+ansible_env/
+
+# Claude Code guidance file (not part of project source)
+CLAUDE.md
+
+# Ansible
+*.retry
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Terraform secrets — never commit real credentials
+**/terraform.tfvars
+
+# Terraform runtime artifacts
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.backup
+**/crash.log
+**/*.tfplan

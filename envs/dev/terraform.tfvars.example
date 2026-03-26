@@ -1,0 +1,24 @@
+# Copy this file to terraform.tfvars and fill in real values.
+# terraform.tfvars is gitignored and must never be committed.
+
+fb_url          = "10.10.10.2"
+api_token       = "T-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+s3_account_name = "myteam"
+
+# Optional: account-level quota
+# s3_account_quota      = "1T"
+# s3_account_hard_limit = true
+
+# Declare one or more buckets. The map key is the bucket name.
+buckets = {
+  "my-bucket-1" = {
+    versioning = "enabled"
+    quota      = "100G"
+    hard_limit = false
+    eradicate  = false   # false = soft-delete on destroy (recoverable)
+  }
+  "my-bucket-2" = {
+    versioning = "absent"
+    eradicate  = false
+  }
+}

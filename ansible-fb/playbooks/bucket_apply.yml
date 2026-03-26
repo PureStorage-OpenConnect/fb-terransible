@@ -1,0 +1,23 @@
+---
+- name: Manage FlashBlade S3 bucket (apply)
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    fb_url: "{{ fb_url | mandatory }}"
+    api_token: "{{ api_token | mandatory }}"
+    bucket_name: "{{ bucket_name | mandatory }}"
+    account_name: "{{ account_name | mandatory }}"
+    versioning: "{{ versioning | default('absent') }}"
+
+  tasks:
+    - name: Ensure S3 bucket is present
+      purestorage.flashblade.purefb_bucket:
+        name: "{{ bucket_name }}"
+        account: "{{ account_name }}"
+        state: present
+        versioning: "{{ versioning }}"
+        quota: "{{ quota | default(omit) }}"
+        hard_limit: "{{ hard_limit | default(omit) }}"
+        fb_url: "{{ fb_url }}"
+        api_token: "{{ api_token }}"

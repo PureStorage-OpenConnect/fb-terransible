@@ -1,0 +1,16 @@
+---
+# fb_url and api_token are NOT passed as task parameters here.
+# They are read automatically from PUREFB_URL and PUREFB_API environment variables,
+# which are set by the Terraform destroy provisioner.
+- name: Delete FlashBlade S3 object store account (destroy)
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    account_name: "{{ account_name | mandatory }}"
+
+  tasks:
+    - name: Ensure S3 object store account is absent
+      purestorage.flashblade.purefb_s3acc:
+        name: "{{ account_name }}"
+        state: absent
