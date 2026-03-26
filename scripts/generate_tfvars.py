@@ -2,23 +2,24 @@
 """Query FlashBlade and generate terraform.tfvars for importing existing resources.
 
 Usage:
-    # Query FlashBlade directly and print tfvars to stdout:
+    # Query FlashBlade and print tfvars to stdout (all accounts and buckets):
     python3 scripts/generate_tfvars.py --fb-url 10.225.112.185 --api-token T-xxx
 
-    # Filter to a specific account:
-    python3 scripts/generate_tfvars.py --fb-url 10.225.112.185 --api-token T-xxx --account myaccount
+    # Filter to specific accounts:
+    python3 scripts/generate_tfvars.py --fb-url 10.225.112.185 --api-token T-xxx \
+        --account myteam --account otherteam
 
     # Write directly to tfvars file:
     python3 scripts/generate_tfvars.py --fb-url 10.225.112.185 --api-token T-xxx \
-        --account myaccount -o envs/dev/terraform.tfvars
+        -o envs/dev/terraform.tfvars
 
     # Or use environment variables:
     export PUREFB_URL=10.225.112.185
     export PUREFB_API=T-xxx
-    python3 scripts/generate_tfvars.py --account myaccount
+    python3 scripts/generate_tfvars.py -o envs/dev/terraform.tfvars
 
     # From a previously saved JSON file (from fb_import.yml playbook):
-    python3 scripts/generate_tfvars.py --from-json fb_state.json --account myaccount
+    python3 scripts/generate_tfvars.py --from-json fb_state.json
 """
 
 import argparse
@@ -90,78 +91,69 @@ def load_from_json(path):
         return json.load(f)
 
 
-def generate_tfvars(data, account_filter=None):
+def generate_tfvars(data, account_filters=None):
     """Generate terraform.tfvars content from FlashBlade data."""
     accounts = data.get("accounts", {})
     buckets = data.get("buckets", {})
 
-    if not account_filter:
-        account_filter = data.get("account_filter", "")
-
-    if account_filter:
-        accounts = {k: v for k, v in accounts.items() if k == account_filter}
-        if not accounts:
-            print(f"Error: account '{account_filter}' not found.", file=sys.stderr)
+    # Filter accounts if requested
+    if account_filters:
+        missing = [a for a in account_filters if a not in accounts]
+        if missing:
+            print(f"Error: account(s) not found: {', '.join(missing)}", file=sys.stderr)
             print(
-                f"Available accounts: {', '.join(data.get('accounts', {}).keys())}",
+                f"Available accounts: {', '.join(sorted(accounts.keys()))}",
                 file=sys.stderr,
             )
             sys.exit(1)
+        accounts = {k: v for k, v in accounts.items() if k in account_filters}
 
     if len(accounts) == 0:
         print("Error: no accounts found on FlashBlade.", file=sys.stderr)
         sys.exit(1)
 
-    if len(accounts) > 1 and not account_filter:
-        print("Multiple accounts found. Use --account to select one:", file=sys.stderr)
-        for name in accounts:
-            print(f"  {name}", file=sys.stderr)
-        sys.exit(1)
-
-    account_name = list(accounts.keys())[0]
-    account_data = accounts[account_name]
-
     lines = []
-    lines.append(f's3_account_name = "{account_name}"')
 
-    quota_limit = account_data.get("quota_limit")
-    if quota_limit:
-        quota_str = humanize_bytes(quota_limit)
+    # S3 accounts
+    lines.append("s3_accounts = {")
+    for acct_name in sorted(accounts):
+        acct_data = accounts[acct_name]
+        quota_limit = acct_data.get("quota_limit")
+        hard_limit = acct_data.get("hard_limit_enabled", False)
+
+        quota_str = humanize_bytes(quota_limit) if quota_limit else ""
+
+        lines.append(f'  "{acct_name}" = {{')
         if quota_str:
-            lines.append(f's3_account_quota      = "{quota_str}"')
+            lines.append(f'    quota      = "{quota_str}"')
+        if hard_limit:
+            lines.append(f"    hard_limit = true")
+        lines.append("  }")
+    lines.append("}")
 
-    hard_limit = account_data.get("hard_limit_enabled", False)
-    if hard_limit:
-        lines.append("s3_account_hard_limit = true")
-
-    # Buckets belonging to this account
-    account_buckets = {}
-    for bucket_name, bucket_data in buckets.items():
-        if bucket_data.get("account_name") != account_name:
-            continue
-        if bucket_data.get("destroyed", False):
-            continue
-
-        config = {}
-
-        versioning = bucket_data.get("versioning", "")
-        if versioning in ("enabled", "suspended"):
-            config["versioning"] = versioning
-
-        bucket_quota = bucket_data.get("quota_limit")
-        if bucket_quota:
-            config["quota"] = humanize_bytes(bucket_quota)
-
-        account_buckets[bucket_name] = config
+    # Buckets (only those belonging to selected accounts, skip destroyed)
+    account_names = set(accounts.keys())
+    active_buckets = {
+        name: bdata
+        for name, bdata in buckets.items()
+        if bdata.get("account_name") in account_names and not bdata.get("destroyed", False)
+    }
 
     lines.append("")
     lines.append("buckets = {")
-    for bname, bconfig in sorted(account_buckets.items()):
+    for bname in sorted(active_buckets):
+        bdata = active_buckets[bname]
         lines.append(f'  "{bname}" = {{')
-        if "versioning" in bconfig:
-            lines.append(f'    versioning = "{bconfig["versioning"]}"')
-        if "quota" in bconfig:
-            lines.append(f'    quota      = "{bconfig["quota"]}"')
+        lines.append(f'    account_name = "{bdata["account_name"]}"')
+
+        versioning = bdata.get("versioning", "")
+        if versioning in ("enabled", "suspended"):
+            lines.append(f'    versioning   = "{versioning}"')
+
+        bucket_quota = bdata.get("quota_limit")
+        if bucket_quota:
+            lines.append(f'    quota        = "{humanize_bytes(bucket_quota)}"')
+
         lines.append("  }")
     lines.append("}")
 
@@ -180,7 +172,12 @@ def main():
     )
     parser.add_argument("--fb-url", help="FlashBlade management IP/hostname (or set PUREFB_URL)")
     parser.add_argument("--api-token", help="FlashBlade API token (or set PUREFB_API)")
-    parser.add_argument("--account", help="Filter to a specific S3 account name")
+    parser.add_argument(
+        "--account",
+        action="append",
+        dest="accounts",
+        help="Filter to specific account(s). Can be repeated. Omit for all accounts.",
+    )
     parser.add_argument("-o", "--output", help="Output file (default: stdout)")
     args = parser.parse_args()
 
@@ -197,7 +194,7 @@ def main():
             sys.exit(1)
         data = fetch_from_flashblade(fb_url, api_token)
 
-    tfvars = generate_tfvars(data, args.account)
+    tfvars = generate_tfvars(data, args.accounts)
 
     if args.output:
         with open(args.output, "w") as f:

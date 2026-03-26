@@ -9,31 +9,23 @@ variable "api_token" {
   sensitive   = true
 }
 
-variable "s3_account_name" {
-  description = "Name of the S3 object store account to create/manage."
-  type        = string
-  default     = "myaccount"
-}
-
-variable "s3_account_quota" {
-  description = "Quota for the S3 account (e.g. '500G'). Empty string for unlimited."
-  type        = string
-  default     = ""
-}
-
-variable "s3_account_hard_limit" {
-  description = "Enforce account quota as a hard limit."
-  type        = bool
-  default     = false
+variable "s3_accounts" {
+  description = "Map of S3 object store account names to their configuration."
+  type = map(object({
+    quota      = optional(string, "")
+    hard_limit = optional(bool, false)
+  }))
+  default = {}
 }
 
 variable "buckets" {
-  description = "Map of bucket names to their configuration."
+  description = "Map of bucket names to their configuration. account_name must reference a key in s3_accounts."
   type = map(object({
-    versioning = optional(string, "absent")
-    quota      = optional(string, "")
-    hard_limit = optional(bool, false)
-    eradicate  = optional(bool, false)
+    account_name = string
+    versioning   = optional(string, "absent")
+    quota        = optional(string, "")
+    hard_limit   = optional(bool, false)
+    eradicate    = optional(bool, false)
   }))
   default = {}
 }

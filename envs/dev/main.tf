@@ -3,13 +3,14 @@ locals {
 }
 
 module "s3_account" {
-  source = "../../modules/fb_s3_account"
+  for_each = var.s3_accounts
+  source   = "../../modules/fb_s3_account"
 
   fb_url       = var.fb_url
   api_token    = var.api_token
-  account_name = var.s3_account_name
-  quota        = var.s3_account_quota
-  hard_limit   = var.s3_account_hard_limit
+  account_name = each.key
+  quota        = each.value.quota
+  hard_limit   = each.value.hard_limit
 
   project_root = local.project_root
 }
@@ -21,7 +22,7 @@ module "s3_bucket" {
   fb_url       = var.fb_url
   api_token    = var.api_token
   bucket_name  = each.key
-  account_name = var.s3_account_name
+  account_name = each.value.account_name
   versioning   = each.value.versioning
   quota        = each.value.quota
   hard_limit   = each.value.hard_limit

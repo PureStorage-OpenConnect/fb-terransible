@@ -49,7 +49,7 @@ tracked in git and must be created separately (see [Setup](#setup)).
 ```
 fb-terransible/
 ├── ansible-fb/
-│   ├── ansible.cfg                  # Collections path, Python interpreter
+│   ├── ansible.cfg                  # Python interpreter, retry settings
 │   ├── inventories/
 │   │   └── flashblade.yml           # localhost inventory (connection: local)
 │   └── playbooks/
@@ -61,15 +61,13 @@ fb-terransible/
 ├── modules/
 │   ├── fb_s3_account/               # Terraform module — S3 object store account
 │   │   ├── main.tf
-│   │   ├── variables.tf
-│   │   └── outputs.tf
+│   │   └── variables.tf
 │   └── fb_bucket/                   # Terraform module — S3 bucket
 │       ├── main.tf
-│       ├── variables.tf
-│       └── outputs.tf
+│       └── variables.tf
 │
 ├── scripts/
-│   └── generate_tfvars.py         # Converts FB import JSON to terraform.tfvars
+│   └── generate_tfvars.py           # Queries FlashBlade and generates terraform.tfvars
 │
 └── envs/
     └── dev/
@@ -121,27 +119,31 @@ terraform init
 
 ---
 
-## Example: create an account and two buckets
+## Example: create accounts and buckets
 
 Edit `envs/dev/terraform.tfvars`:
 
 ```hcl
-fb_url          = "10.10.10.2"
-api_token       = "T-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-s3_account_name = "myteam"
+fb_url    = "10.10.10.2"
+api_token = "T-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+s3_accounts = {
+  "myteam" = {
+    quota      = "1T"
+    hard_limit = false
+  }
+}
 
 buckets = {
   "logs-bucket" = {
-    versioning = "enabled"
-    quota      = "200G"
-    hard_limit = false
-    eradicate  = false
+    account_name = "myteam"
+    versioning   = "enabled"
+    quota        = "200G"
   }
   "backups-bucket" = {
-    versioning = "absent"
-    quota      = "500G"
-    hard_limit = true
-    eradicate  = false
+    account_name = "myteam"
+    quota        = "500G"
+    hard_limit   = true
   }
 }
 ```
@@ -159,8 +161,8 @@ terraform apply
 Expected output (abbreviated):
 
 ```
-module.s3_account.ansible_playbook.s3_account: Creating...
-module.s3_account.ansible_playbook.s3_account: Creation complete
+module.s3_account["myteam"].ansible_playbook.s3_account: Creating...
+module.s3_account["myteam"].ansible_playbook.s3_account: Creation complete
 module.s3_bucket["logs-bucket"].ansible_playbook.bucket: Creating...
 module.s3_bucket["backups-bucket"].ansible_playbook.bucket: Creating...
 ...
@@ -188,25 +190,26 @@ Terraform state instead of declaring them manually.
 ```bash
 source ansible_env/bin/activate
 
-# List available accounts:
+# Import all accounts and their buckets:
 python3 scripts/generate_tfvars.py --fb-url 10.225.112.185 --api-token T-xxx
 
-# Generate tfvars for a specific account:
-python3 scripts/generate_tfvars.py --fb-url 10.225.112.185 --api-token T-xxx --account myaccount
+# Filter to specific accounts:
+python3 scripts/generate_tfvars.py --fb-url 10.225.112.185 --api-token T-xxx \
+  --account myteam --account otherteam
 
 # Write directly to the environment tfvars file:
 python3 scripts/generate_tfvars.py --fb-url 10.225.112.185 --api-token T-xxx \
-  --account myaccount -o envs/dev/terraform.tfvars
+  -o envs/dev/terraform.tfvars
 
 # Or use environment variables instead of flags:
 export PUREFB_URL=10.225.112.185
 export PUREFB_API=T-xxx
-python3 scripts/generate_tfvars.py --account myaccount -o envs/dev/terraform.tfvars
+python3 scripts/generate_tfvars.py -o envs/dev/terraform.tfvars
 ```
 
 The script queries the FlashBlade API directly and outputs valid `terraform.tfvars` syntax,
-including the account name, quota settings, and all non-destroyed buckets with their
-versioning and quota configuration.
+including all accounts with their quota settings, and all non-destroyed buckets with their
+versioning, quota, and account association.
 
 ### 2. Add credentials and apply
 
@@ -229,12 +232,12 @@ followed by `terraform apply` will update the real resources to match.
 ## Destroy
 
 ```bash
-# Soft-delete buckets (recoverable from FlashBlade trash), then delete account
+# Soft-delete buckets (recoverable from FlashBlade trash), then delete accounts
 terraform destroy
 ```
 
-To permanently eradicate a bucket on destroy, set `eradicate = true` in `terraform.tfvars`
-before running `terraform destroy`.
+To permanently eradicate a bucket on destroy, set `eradicate = true` for that bucket in
+`terraform.tfvars` before running `terraform destroy`.
 
 ---
 
