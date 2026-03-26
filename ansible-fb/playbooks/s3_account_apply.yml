@@ -9,18 +9,18 @@
     account_name: "{{ account_name | mandatory }}"
 
   tasks:
-    - name: Ensure S3 object store account is present
-      purestorage.flashblade.purefb_s3acc: >-
-        {{
-          _base | combine(_quota)
-        }}
-      vars:
-        _base:
+    - name: Build base module parameters
+      ansible.builtin.set_fact:
+        _params:
           name: "{{ account_name }}"
           state: present
           fb_url: "{{ fb_url }}"
           api_token: "{{ api_token }}"
-        _quota: >-
-          {{ {'quota': quota, 'hard_limit': hard_limit | bool}
-             if quota is defined and quota not in [None, '', 'None', 'null']
-             else {} }}
+
+    - name: Add quota and hard_limit if quota is specified
+      ansible.builtin.set_fact:
+        _params: "{{ _params | combine({'quota': quota, 'hard_limit': hard_limit | bool}) }}"
+      when: quota is defined and quota not in [None, '', 'None', 'null']
+
+    - name: Ensure S3 object store account is present
+      purestorage.flashblade.purefb_s3acc: "{{ _params }}"
