@@ -17,7 +17,7 @@
         account: "{{ account_name }}"
         state: present
         versioning: "{{ versioning if versioning in ['enabled', 'suspended'] else omit }}"
-        quota: "{{ quota | default(omit) }}"
-        hard_limit: "{{ hard_limit | default(omit) }}"
+        quota: "{{ omit if quota is not defined or quota in [None, '', 'None', 'null'] else quota }}"
+        hard_limit: "{{ omit if hard_limit is not defined or hard_limit in [None, '', 'None', 'null'] else hard_limit }}"
         fb_url: "{{ fb_url }}"
         api_token: "{{ api_token }}"
