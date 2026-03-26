@@ -86,8 +86,10 @@ fb-tfansible/
 python3 -m venv ansible_env
 source ansible_env/bin/activate
 pip install ansible
-ansible-galaxy collection install purestorage.flashblade
+pip install -r ansible_env/lib/python3.12/site-packages/ansible_collections/purestorage/flashblade/requirements.txt
 ```
+
+Note that the Everpure ansible galaxy collections are installed by default with ansible, so there is not any need of executing `ansible-galaxy collection install purestorage.flashblade`.
 
 ### 2. Configure credentials
 
