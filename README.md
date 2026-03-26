@@ -1,4 +1,4 @@
-# fb-tfansible
+# FB TerrAnsible
 
 Terraform wrapper for managing Pure Storage FlashBlade S3 objects (accounts and buckets) via Ansible.
 
