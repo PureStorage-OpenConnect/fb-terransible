@@ -1,3 +1,7 @@
+locals {
+  project_root = var.project_root != "" ? var.project_root : abspath("${path.root}/../..")
+}
+
 module "s3_account" {
   source = "../../modules/fb_s3_account"
 
@@ -7,7 +11,7 @@ module "s3_account" {
   quota        = var.s3_account_quota
   hard_limit   = var.s3_account_hard_limit
 
-  playbook_base_path = var.playbook_base_path
+  project_root = local.project_root
 }
 
 module "s3_bucket" {
@@ -23,7 +27,7 @@ module "s3_bucket" {
   hard_limit   = each.value.hard_limit
   eradicate    = each.value.eradicate
 
-  playbook_base_path = var.playbook_base_path
+  project_root = local.project_root
 
   depends_on = [module.s3_account]
 }

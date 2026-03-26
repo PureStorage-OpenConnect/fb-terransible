@@ -48,8 +48,7 @@ variable "eradicate" {
   default     = false
 }
 
-variable "playbook_base_path" {
-  description = "Absolute path to the ansible-fb/playbooks directory."
+variable "project_root" {
+  description = "Absolute path to the project root directory."
   type        = string
-  default     = "/home/egrosso/fb-terransible/ansible-fb/playbooks"
 }

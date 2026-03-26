@@ -11,22 +11,31 @@ terraform {
   }
 }
 
+locals {
+  playbook_base_path = "${var.project_root}/ansible-fb/playbooks"
+  ansible_bin        = "${var.project_root}/ansible_env/bin/ansible-playbook"
+  ansible_python     = "${var.project_root}/ansible_env/bin/python3"
+  collections_path   = "${var.project_root}/ansible_env/lib/python3.12/site-packages/ansible_collections"
+  python_path        = "${var.project_root}/ansible_env/lib/python3.12/site-packages"
+}
+
 # Apply / reconcile: runs on every terraform apply (replayable = true).
 # purefb_bucket is idempotent — creates if absent, updates config if it differs,
 # no-ops if bucket already matches desired state. This is the drift reconciliation mechanism.
 resource "ansible_playbook" "bucket" {
-  playbook   = "${var.playbook_base_path}/bucket_apply.yml"
+  playbook   = "${local.playbook_base_path}/bucket_apply.yml"
   name       = "localhost"
   replayable = true
 
   extra_vars = {
-    fb_url       = var.fb_url
-    api_token    = var.api_token
-    bucket_name  = var.bucket_name
-    account_name = var.account_name
-    versioning   = var.versioning
-    quota        = var.quota
-    hard_limit   = tostring(var.hard_limit)
+    fb_url                     = var.fb_url
+    api_token                  = var.api_token
+    bucket_name                = var.bucket_name
+    account_name               = var.account_name
+    versioning                 = var.versioning
+    quota                      = var.quota
+    hard_limit                 = tostring(var.hard_limit)
+    ansible_python_interpreter = local.ansible_python
   }
 }
 
@@ -36,13 +45,15 @@ resource "ansible_playbook" "bucket" {
 # Credentials are passed via PUREFB_URL / PUREFB_API env vars to avoid CLI exposure.
 resource "null_resource" "bucket_destroy" {
   triggers = {
-    bucket_name   = var.bucket_name
-    account_name  = var.account_name
-    eradicate     = tostring(var.eradicate)
-    fb_url        = var.fb_url
-    api_token     = var.api_token
-    playbook_path = "${var.playbook_base_path}/bucket_destroy.yml"
-    ansible_bin   = "/home/egrosso/fb-terransible/ansible_env/bin/ansible-playbook"
+    bucket_name      = var.bucket_name
+    account_name     = var.account_name
+    eradicate        = tostring(var.eradicate)
+    fb_url           = var.fb_url
+    api_token        = var.api_token
+    playbook_path    = "${local.playbook_base_path}/bucket_destroy.yml"
+    ansible_bin      = local.ansible_bin
+    collections_path = local.collections_path
+    python_path      = local.python_path
   }
 
   provisioner "local-exec" {
@@ -52,8 +63,8 @@ resource "null_resource" "bucket_destroy" {
     environment = {
       PUREFB_URL                = self.triggers.fb_url
       PUREFB_API                = self.triggers.api_token
-      ANSIBLE_COLLECTIONS_PATHS = "/home/egrosso/fb-terransible/ansible_env/lib/python3.12/site-packages/ansible_collections"
-      PYTHONPATH                = "/home/egrosso/fb-terransible/ansible_env/lib/python3.12/site-packages"
+      ANSIBLE_COLLECTIONS_PATHS = self.triggers.collections_path
+      PYTHONPATH                = self.triggers.python_path
     }
   }
 

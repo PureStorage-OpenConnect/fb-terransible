@@ -3,4 +3,3 @@ all:
   hosts:
     localhost:
       ansible_connection: local
-      ansible_python_interpreter: /home/egrosso/fb-tfansible/ansible_env/bin/python3
