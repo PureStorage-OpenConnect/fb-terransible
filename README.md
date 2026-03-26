@@ -56,7 +56,8 @@ fb-terransible/
 │       ├── s3_account_apply.yml
 │       ├── s3_account_destroy.yml
 │       ├── bucket_apply.yml
-│       └── bucket_destroy.yml
+│       ├── bucket_destroy.yml
+│       └── fb_import.yml          # Gathers existing FB state for import
 │
 ├── modules/
 │   ├── fb_s3_account/               # Terraform module — S3 object store account
@@ -67,6 +68,9 @@ fb-terransible/
 │       ├── main.tf
 │       ├── variables.tf
 │       └── outputs.tf
+│
+├── scripts/
+│   └── generate_tfvars.py         # Converts FB import JSON to terraform.tfvars
 │
 └── envs/
     └── dev/
@@ -172,6 +176,60 @@ Apply complete! Resources: 6 added, 0 changed, 0 destroyed.
 2. Run `terraform apply` again — no changes to `terraform.tfvars` needed.
 3. Terraform re-runs all playbooks (`replayable = true`). `purefb_bucket` detects the bucket
    is missing and re-creates it automatically.
+
+---
+
+## Importing existing FlashBlade resources
+
+If you already have S3 accounts and buckets on your FlashBlade, you can import them into
+Terraform state instead of declaring them manually.
+
+### 1. Gather current state from FlashBlade
+
+```bash
+source ansible_env/bin/activate
+
+ansible-playbook ansible-fb/playbooks/fb_import.yml \
+  -e fb_url=10.225.112.185 \
+  -e api_token=T-xxx \
+  -e output_file=fb_state.json
+```
+
+This queries the FlashBlade API and writes all S3 accounts and buckets to `fb_state.json`.
+
+### 2. Generate terraform.tfvars
+
+```bash
+# List available accounts:
+python3 scripts/generate_tfvars.py fb_state.json
+
+# Generate tfvars for a specific account:
+python3 scripts/generate_tfvars.py fb_state.json --account myaccount
+
+# Write directly to the environment tfvars file:
+python3 scripts/generate_tfvars.py fb_state.json \
+  --account myaccount \
+  -o envs/dev/terraform.tfvars
+```
+
+The generated file includes the account name, quota settings, and all non-destroyed buckets
+with their versioning and quota configuration.
+
+### 3. Add credentials and apply
+
+Add `fb_url` and `api_token` to the generated `terraform.tfvars` (the script does not include
+credentials), then:
+
+```bash
+cd envs/dev
+terraform init   # first time only
+terraform apply
+```
+
+Because the Ansible playbooks are idempotent, the first apply detects that the resources
+already exist on FlashBlade and makes no changes — it only records them in Terraform state.
+From this point on, Terraform manages them: any subsequent edits to `terraform.tfvars`
+followed by `terraform apply` will update the real resources to match.
 
 ---
 

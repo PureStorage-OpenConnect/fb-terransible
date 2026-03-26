@@ -1,0 +1,37 @@
+---
+- name: Gather FlashBlade S3 accounts and buckets for Terraform import
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    fb_url: "{{ fb_url | mandatory }}"
+    api_token: "{{ api_token | mandatory }}"
+    account_filter: "{{ account_filter | default('') }}"
+
+  tasks:
+    - name: Gather S3 account and bucket info from FlashBlade
+      purestorage.flashblade.purefb_info:
+        gather_subset:
+          - accounts
+          - buckets
+        fb_url: "{{ fb_url }}"
+        api_token: "{{ api_token }}"
+      register: fb_info
+
+    - name: Build import data
+      ansible.builtin.set_fact:
+        import_data:
+          accounts: "{{ fb_info.purefb_info.accounts }}"
+          buckets: "{{ fb_info.purefb_info.buckets }}"
+          account_filter: "{{ account_filter }}"
+
+    - name: Write JSON output to file
+      ansible.builtin.copy:
+        content: "{{ import_data | to_nice_json }}"
+        dest: "{{ output_file | default('/dev/stdout') }}"
+      when: output_file is defined
+
+    - name: Print JSON to stdout
+      ansible.builtin.debug:
+        msg: "{{ import_data | to_json }}"
+      when: output_file is not defined
