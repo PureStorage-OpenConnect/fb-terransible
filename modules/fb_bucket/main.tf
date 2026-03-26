@@ -27,16 +27,18 @@ resource "ansible_playbook" "bucket" {
   name       = "localhost"
   replayable = true
 
-  extra_vars = {
-    fb_url                     = var.fb_url
-    api_token                  = var.api_token
-    bucket_name                = var.bucket_name
-    account_name               = var.account_name
-    versioning                 = var.versioning
-    quota                      = var.quota
-    hard_limit                 = tostring(var.hard_limit)
-    ansible_python_interpreter = local.ansible_python
-  }
+  extra_vars = merge(
+    {
+      fb_url                     = var.fb_url
+      api_token                  = var.api_token
+      bucket_name                = var.bucket_name
+      account_name               = var.account_name
+      versioning                 = var.versioning
+      hard_limit                 = tostring(var.hard_limit)
+      ansible_python_interpreter = local.ansible_python
+    },
+    var.quota != "" ? { quota = var.quota } : {}
+  )
 }
 
 # Destroy: runs bucket_destroy.yml when terraform destroy is called.

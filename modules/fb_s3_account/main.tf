@@ -27,14 +27,16 @@ resource "ansible_playbook" "s3_account" {
   name       = "localhost"
   replayable = true
 
-  extra_vars = {
-    fb_url                     = var.fb_url
-    api_token                  = var.api_token
-    account_name               = var.account_name
-    quota                      = var.quota
-    hard_limit                 = tostring(var.hard_limit)
-    ansible_python_interpreter = local.ansible_python
-  }
+  extra_vars = merge(
+    {
+      fb_url                     = var.fb_url
+      api_token                  = var.api_token
+      account_name               = var.account_name
+      hard_limit                 = tostring(var.hard_limit)
+      ansible_python_interpreter = local.ansible_python
+    },
+    var.quota != "" ? { quota = var.quota } : {}
+  )
 }
 
 # Destroy: runs s3_account_destroy.yml when terraform destroy is called.
