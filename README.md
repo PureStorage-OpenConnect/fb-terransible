@@ -47,7 +47,7 @@ tracked in git and must be created separately (see [Setup](#setup)).
 ## Project structure
 
 ```
-fb-tfansible/
+fb-terransible/
 ├── ansible-fb/
 │   ├── ansible.cfg                  # Collections path, Python interpreter
 │   ├── inventories/

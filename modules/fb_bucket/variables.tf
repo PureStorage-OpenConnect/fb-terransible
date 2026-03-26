@@ -51,5 +51,5 @@ variable "eradicate" {
 variable "playbook_base_path" {
   description = "Absolute path to the ansible-fb/playbooks directory."
   type        = string
-  default     = "/home/egrosso/fb-tfansible/ansible-fb/playbooks"
+  default     = "/home/egrosso/fb-terransible/ansible-fb/playbooks"
 }

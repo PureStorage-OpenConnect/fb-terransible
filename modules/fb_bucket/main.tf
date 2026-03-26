@@ -42,7 +42,7 @@ resource "null_resource" "bucket_destroy" {
     fb_url        = var.fb_url
     api_token     = var.api_token
     playbook_path = "${var.playbook_base_path}/bucket_destroy.yml"
-    ansible_bin   = "/home/egrosso/fb-tfansible/ansible_env/bin/ansible-playbook"
+    ansible_bin   = "/home/egrosso/fb-terransible/ansible_env/bin/ansible-playbook"
   }
 
   provisioner "local-exec" {
@@ -52,8 +52,8 @@ resource "null_resource" "bucket_destroy" {
     environment = {
       PUREFB_URL                = self.triggers.fb_url
       PUREFB_API                = self.triggers.api_token
-      ANSIBLE_COLLECTIONS_PATHS = "/home/egrosso/fb-tfansible/ansible_env/lib/python3.12/site-packages/ansible_collections"
-      PYTHONPATH                = "/home/egrosso/fb-tfansible/ansible_env/lib/python3.12/site-packages"
+      ANSIBLE_COLLECTIONS_PATHS = "/home/egrosso/fb-terransible/ansible_env/lib/python3.12/site-packages/ansible_collections"
+      PYTHONPATH                = "/home/egrosso/fb-terransible/ansible_env/lib/python3.12/site-packages"
     }
   }
 
