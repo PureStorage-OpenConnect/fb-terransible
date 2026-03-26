@@ -10,10 +10,17 @@
 
   tasks:
     - name: Ensure S3 object store account is present
-      purestorage.flashblade.purefb_s3acc:
-        name: "{{ account_name }}"
-        state: present
-        quota: "{{ omit if quota is not defined or quota in [None, '', 'None', 'null'] else quota }}"
-        hard_limit: "{{ omit if hard_limit is not defined or hard_limit in [None, '', 'None', 'null'] else hard_limit }}"
-        fb_url: "{{ fb_url }}"
-        api_token: "{{ api_token }}"
+      purestorage.flashblade.purefb_s3acc: >-
+        {{
+          _base | combine(_quota)
+        }}
+      vars:
+        _base:
+          name: "{{ account_name }}"
+          state: present
+          fb_url: "{{ fb_url }}"
+          api_token: "{{ api_token }}"
+        _quota: >-
+          {{ {'quota': quota, 'hard_limit': hard_limit | bool}
+             if quota is defined and quota not in [None, '', 'None', 'null']
+             else {} }}
