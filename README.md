@@ -184,41 +184,35 @@ Apply complete! Resources: 6 added, 0 changed, 0 destroyed.
 If you already have S3 accounts and buckets on your FlashBlade, you can import them into
 Terraform state instead of declaring them manually.
 
-### 1. Gather current state from FlashBlade
+### 1. Generate terraform.tfvars from FlashBlade
 
 ```bash
 source ansible_env/bin/activate
 
-ansible-playbook ansible-fb/playbooks/fb_import.yml \
-  -e fb_url=10.225.112.185 \
-  -e api_token=T-xxx \
-  -e output_file=fb_state.json
-```
-
-This queries the FlashBlade API and writes all S3 accounts and buckets to `fb_state.json`.
-
-### 2. Generate terraform.tfvars
-
-```bash
 # List available accounts:
-python3 scripts/generate_tfvars.py fb_state.json
+python3 scripts/generate_tfvars.py --fb-url 10.225.112.185 --api-token T-xxx
 
 # Generate tfvars for a specific account:
-python3 scripts/generate_tfvars.py fb_state.json --account myaccount
+python3 scripts/generate_tfvars.py --fb-url 10.225.112.185 --api-token T-xxx --account myaccount
 
 # Write directly to the environment tfvars file:
-python3 scripts/generate_tfvars.py fb_state.json \
-  --account myaccount \
-  -o envs/dev/terraform.tfvars
+python3 scripts/generate_tfvars.py --fb-url 10.225.112.185 --api-token T-xxx \
+  --account myaccount -o envs/dev/terraform.tfvars
+
+# Or use environment variables instead of flags:
+export PUREFB_URL=10.225.112.185
+export PUREFB_API=T-xxx
+python3 scripts/generate_tfvars.py --account myaccount -o envs/dev/terraform.tfvars
 ```
 
-The generated file includes the account name, quota settings, and all non-destroyed buckets
-with their versioning and quota configuration.
+The script queries the FlashBlade API directly and outputs valid `terraform.tfvars` syntax,
+including the account name, quota settings, and all non-destroyed buckets with their
+versioning and quota configuration.
 
-### 3. Add credentials and apply
+### 2. Add credentials and apply
 
 Add `fb_url` and `api_token` to the generated `terraform.tfvars` (the script does not include
-credentials), then:
+credentials for security), then:
 
 ```bash
 cd envs/dev
