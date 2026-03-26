@@ -11,21 +11,24 @@
     versioning: "{{ versioning | default('absent') }}"
 
   tasks:
-    - name: Ensure S3 bucket is present
-      purestorage.flashblade.purefb_bucket: >-
-        {{
-          _base | combine(_versioning) | combine(_quota)
-        }}
-      vars:
-        _base:
+    - name: Build base module parameters
+      ansible.builtin.set_fact:
+        _params:
           name: "{{ bucket_name }}"
           account: "{{ account_name }}"
           state: present
           fb_url: "{{ fb_url }}"
           api_token: "{{ api_token }}"
-        _versioning: >-
-          {{ {'versioning': versioning} if versioning in ['enabled', 'suspended'] else {} }}
-        _quota: >-
-          {{ {'quota': quota, 'hard_limit': hard_limit | bool}
-             if quota is defined and quota not in [None, '', 'None', 'null']
-             else {} }}
+
+    - name: Add versioning if enabled or suspended
+      ansible.builtin.set_fact:
+        _params: "{{ _params | combine({'versioning': versioning}) }}"
+      when: versioning in ['enabled', 'suspended']
+
+    - name: Add quota and hard_limit if quota is specified
+      ansible.builtin.set_fact:
+        _params: "{{ _params | combine({'quota': quota, 'hard_limit': hard_limit | bool}) }}"
+      when: quota is defined and quota not in [None, '', 'None', 'null']
+
+    - name: Ensure S3 bucket is present
+      purestorage.flashblade.purefb_bucket: "{{ _params }}"
