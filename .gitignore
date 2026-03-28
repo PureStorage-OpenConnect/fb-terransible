@@ -1,7 +1,6 @@
 # Python virtual environment (recreate locally — see README Setup section)
 ansible_env/
 
-# Claude Code guidance file (not part of project source)
 CLAUDE.md
 
 # Ansible
